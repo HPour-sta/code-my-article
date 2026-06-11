@@ -1,5 +1,5 @@
-# Code for the article "[Hybrid Analytical-Numerical Algorithm for Stochastic Frontier Models: Application to Productivity Analysis]"
+# Code for "Hybrid Analytical-Numerical Algorithm for Stochastic Frontier Models"
 
-This repository will soon contain the complete code for the article titled "[Hybrid Analytical-Numerical Algorithm for Stochastic Frontier Models: Application to Productivity Analysis]".
+**Authors:** Hadis Pouresmaili, Reza Pourmousa
 
-In preparation...
+## Repository Structure
