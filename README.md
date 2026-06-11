@@ -1,4 +1,4 @@
-# Code for "Hybrid Analytical-Numerical Algorithm for Stochastic Frontier Models"
+# Code for "Hybrid Analytical-Numerical Algorithm for Stochastic Frontier Models" article.
 
 **Authors:** Hadis Pouresmaili, Reza Pourmousa
 
@@ -37,4 +37,5 @@ source("code/03_empirical_application.R")
 source("code/04_sensitivity_seed.R")
 
 ## Contact
+
 Hadis.Pouresmaili@math.uk.ac.ir
