@@ -3,16 +3,20 @@
 **Authors:** Hadis Pouresmaili, Reza Pourmousa
 
 ## Repository Structure
+
 code-my-article/
-├── README.md
+
 ├── code/
+
 │ ├── 00_hybrid_algorithm.R
+
 │ ├── 01_simulation_NK2.R
+
 │ ├── 02_simulation_extreme.R
+
 │ ├── 03_empirical_application.R
+
 │ └── 04_sensitivity_seed.R
-├── outputs/
-└── figures/
 
 ## Requirements
 
@@ -32,5 +36,5 @@ source("code/02_simulation_extreme.R")
 source("code/03_empirical_application.R")
 source("code/04_sensitivity_seed.R")
 
-Contact
+## Contact
 Hadis.Pouresmaili@math.uk.ac.ir
