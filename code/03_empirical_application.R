@@ -106,6 +106,55 @@ cat("\nEmpirical application completed.\n")
 } else {
   cat("Nakagami model estimation did not converge. Convergence code:", opt_actual$convergence, "\n")
 }
-
 cat("\nEmpirical application completed successfully.\n")
+% ============================================================================
+% Density plot of technical efficiency distribution
+% ============================================================================
+# Extract TE values from the empirical estimation
+te_data <- data.frame(
+  TE = TE_actual,
+  Model = "Nakagami"
+)
+
+# For comparison with other models, you would need to add their TE vectors here
+# Example:
+# te_data <- rbind(
+#   data.frame(TE = TE_actual, Model = "Nakagami"),
+#   data.frame(TE = TE_halfnormal, Model = "Half-Normal"),
+#   data.frame(TE = TE_exp, Model = "Exponential"),
+#   data.frame(TE = TE_truncnorm, Model = "Truncated-Normal")
+# )
+
+# Calculate means for vertical lines
+te_summary <- aggregate(TE ~ Model, data = te_data, FUN = mean, na.rm = TRUE)
+colnames(te_summary)[2] <- "Mean"
+
+plot <- ggplot(te_data, aes(x = TE, fill = Model, color = Model)) +
+  geom_density(alpha = 0.4, linewidth = 0.8, adjust = 1.5) +
+  scale_fill_manual(values = c("#E69F00", "#56B4E9", "#009E73", "#CC79A7")) +
+  scale_color_manual(values = c("#E69F00", "#56B4E9", "#009E73", "#CC79A7")) +
+  labs(
+    title = "Figure 1: Distribution of Technical Efficiency Scores",
+    subtitle = "Philippine Rice Farms (8-Year Average, n = 43 farms)",
+    x = "Technical Efficiency Score",
+    y = "Density"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 11, hjust = 0.5),
+    axis.title = element_text(size = 11),
+    legend.text = element_text(size = 10),
+    axis.text = element_text(size = 10)
+  ) +
+  xlim(0.2, 1.0) +
+  geom_vline(data = te_summary, aes(xintercept = Mean, color = Model), 
+             linetype = "dashed", alpha = 0.7, show.legend = FALSE)
+
+# Display the plot
+print(plot)
+
 
