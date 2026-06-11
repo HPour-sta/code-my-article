@@ -21,12 +21,12 @@ code-my-article/
 ## Requirements
 
 - R >= 4.2.0
-- Packages: `maxLik`, `truncnorm`, `pracma`, `randtoolbox`
+- Packages: `maxLik`, `truncnorm`, `pracma`, `randtoolbox`, `ggplot2`
 
 ## Installation
 
  ```r
- install.packages(c("maxLik", "truncnorm", "pracma", "randtoolbox"))
+ install.packages(c("maxLik", "truncnorm", "pracma", "randtoolbox", "ggplot2"))
  ```
  
  ## Run the Code
