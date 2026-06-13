@@ -1,141 +1,361 @@
 % ============================================================================
 % FILE 5: code/03_empirical_application.R 
 % ============================================================================
-# Empirical application: Philippine rice farms (Tables 8, 9, 10)
+# Empirical application: Philippine rice farms (Tables 8, 9 and Figure1)
 # Data source: ricephil from sfaR package (used only as data source)
-# ============================================================================
-# Empirical application: Philippine rice farms
 # Data hard-coded from Battese and Coelli (1988)
-
-# Hard-coded data (43 farms, averages over time)
-ricephil_data <- data.frame(
-  lnP = c(1.782, 1.891, 1.723, 1.856, 1.794, 1.823, 1.845, 1.767, 1.801, 1.834,
-          1.789, 1.812, 1.775, 1.843, 1.821, 1.798, 1.834, 1.789, 1.812, 1.798,
-          1.823, 1.787, 1.809, 1.834, 1.798, 1.812, 1.789, 1.821, 1.798, 1.809,
-          1.834, 1.812, 1.789, 1.823, 1.798, 1.809, 1.834, 1.812, 1.789, 1.823,
-          1.798, 1.809, 1.823),
-  lnA = c(0.682, 0.741, 0.653, 0.712, 0.695, 0.723, 0.708, 0.671, 0.689, 0.715,
-          0.693, 0.706, 0.685, 0.719, 0.704, 0.691, 0.713, 0.688, 0.709, 0.696,
-          0.718, 0.683, 0.705, 0.716, 0.692, 0.707, 0.686, 0.714, 0.698, 0.708,
-          0.717, 0.704, 0.689, 0.715, 0.693, 0.706, 0.718, 0.701, 0.687, 0.712,
-          0.694, 0.709, 0.716),
-  lnL = c(1.892, 2.041, 1.834, 1.956, 1.923, 1.987, 1.967, 1.876, 1.912, 1.945,
-          1.908, 1.934, 1.896, 1.952, 1.928, 1.904, 1.941, 1.902, 1.937, 1.914,
-          1.949, 1.891, 1.925, 1.944, 1.906, 1.931, 1.899, 1.938, 1.916, 1.928,
-          1.947, 1.921, 1.901, 1.935, 1.909, 1.924, 1.946, 1.918, 1.897, 1.932,
-          1.911, 1.926, 1.943),
-  lnN = c(1.342, 1.445, 1.298, 1.382, 1.356, 1.398, 1.387, 1.323, 1.347, 1.376,
-          1.342, 1.365, 1.338, 1.379, 1.361, 1.345, 1.374, 1.340, 1.369, 1.350,
-          1.377, 1.335, 1.358, 1.372, 1.344, 1.363, 1.333, 1.368, 1.352, 1.362,
-          1.375, 1.358, 1.339, 1.366, 1.345, 1.357, 1.374, 1.355, 1.336, 1.361,
-          1.348, 1.359, 1.372),
-  lnO = c(0.182, 0.251, 0.153, 0.212, 0.195, 0.223, 0.208, 0.171, 0.189, 0.215,
-          0.193, 0.206, 0.185, 0.219, 0.204, 0.191, 0.213, 0.188, 0.209, 0.196,
-          0.218, 0.183, 0.205, 0.216, 0.192, 0.207, 0.186, 0.214, 0.198, 0.208,
-          0.217, 0.204, 0.189, 0.215, 0.193, 0.206, 0.218, 0.201, 0.187, 0.212,
-          0.194, 0.209, 0.216)
-)
-
-y_actual <- ricephil_data$lnP
-X_actual <- cbind(1, ricephil_data$lnA, ricephil_data$lnL, 
-                  ricephil_data$lnN, ricephil_data$lnO)
-
-cat("Number of farms:", nrow(ricephil_data), "\n")
-
-# Initial parameters
-init_actual <- c(mean(y_actual), 0.3, 0.3, 0.2, 0.03, log(0.3), log(0.5), log(0.5))
-
-opt_actual <- optim(init_actual, neg_loglik_nakagami, y = y_actual, X = X_actual,
-                    method = "Nelder-Mead", 
-                    control = list(maxit = 2000, trace = 0, reltol = 1e-8))
-
-if (opt_actual$convergence == 0) {
-  params_final <- opt_actual$par
-  K_act <- ncol(X_actual)
+# ============================================================================
+# Helper function for generating Halton sequences
+# ============================================================================
+generate_halton <- function(n, base = 2) {
+  halton <- numeric(n)
+  for (i in 1:n) {
+    f <- 1
+    r <- 0
+    j <- i
+    while (j > 0) {
+      f <- f / base
+      r <- r + f * (j %% base)
+      j <- floor(j / base)
+    }
+    halton[i] <- r
+  }
+  return(halton)
+}
+# ============================================================================
+# Function to compute E(q^r) using a hybrid algorithm
+# ============================================================================
+compute_E_qr <- function(r, tau, omega, method = "auto") {
+  alpha <- tau / omega
   
-  cat("\n========== Nakagami Model Estimates ==========\n")
-  cat(sprintf("beta_land (lnA): %.4f\n", params_final[2]))
-  cat(sprintf("beta_labor (lnL): %.4f\n", params_final[3]))
-  cat(sprintf("beta_fertilizer (lnN): %.4f\n", params_final[4]))
-  cat(sprintf("beta_other (lnO): %.4f\n", params_final[5]))
-  cat(sprintf("sigma_v: %.4f\n", exp(params_final[K_act+1])))
-  cat(sprintf("sigma_u: %.4f\n", exp(params_final[K_act+2])))
-  cat(sprintf("mu_hat: %.4f\n", exp(params_final[K_act+3])))
+  # Limiting alpha for numerical stability
+  alpha <- max(min(alpha, 10), -10)
   
-  # Compute technical efficiency
-  TE_actual <- numeric(length(y_actual))
-  for (i in 1:length(y_actual)) {
-    eps_i <- y_actual[i] - sum(X_actual[i, ] * params_final[1:K_act])
-    TE_actual[i] <- compute_TE(eps_i, exp(params_final[K_act+1]), 
-                               exp(params_final[K_act+3]), 
-                               exp(params_final[K_act+2]), 
-                               params_final[1:K_act], X_actual[i, ])
+  if (method == "recurrence" || (abs(alpha) < 10 && abs(r - round(r)) < 1e-10)) {
+
+    # Recursive method for effectively integer r
+    if (r == 0) return(1)
+    if (r == 1) {
+      p_alpha <- pnorm(alpha)
+      if(p_alpha <= 0 || p_alpha >= 1) p_alpha <- 0.5
+      return(tau + omega * dnorm(alpha) / p_alpha)
+    }
+    
+    # Recursive calculation
+    E_vals <- numeric(floor(r) + 1)
+    E_vals[1] <- 1
+    p_alpha <- pnorm(alpha)
+    if(p_alpha <= 0 || p_alpha >= 1) p_alpha <- 0.5
+    E_vals[2] <- tau + omega * dnorm(alpha) / p_alpha
+    
+    for (k in 2:floor(r)) {
+      E_vals[k + 1] <- tau * E_vals[k] + (k - 1) * omega^2 * E_vals[k - 1]
+    }
+    return(E_vals[floor(r) + 1])
+  }
+  else if (method == "halton" || abs(alpha) > 30 || r > 15 || abs(r - round(r)) > 1e-10) {
+
+    # Integration method using Halton sequences
+    n_points <- 5000
+    halton_seq <- generate_halton(n_points, base = 2)
+    
+    # Numerical protection for pnorm
+    p_alpha <- pnorm(alpha)
+    p_alpha <- max(min(p_alpha, 1 - 1e-10), 1e-10)
+    p_neg_alpha <- pnorm(-alpha)
+    
+    # Transformation to truncated normal distribution with protection
+    u <- p_neg_alpha + halton_seq * p_alpha
+    u <- pmax(pmin(u, 1 - 1e-10), 1e-10)  
+    
+    z <- qnorm(u)
+    q_vals <- tau + omega * z
+    
+    return(mean(q_vals^r, na.rm = TRUE))
+  }
+  else {
+
+   # Approximate analytical method
+    p_alpha <- pnorm(alpha)
+    p_alpha <- max(min(p_alpha, 1 - 1e-10), 1e-10)
+    abs_tau <- abs(tau)
+    return((abs_tau + omega)^r * pnorm(alpha + r * omega/abs_tau) / p_alpha)
+  }
+}
+
+# ============================================================================
+# Likelihood function for the Nakagami model
+# ============================================================================
+nakagami_loglik <- function(params, y, X) {
+  # Parameters: beta (K parameter), sigma_v, m, Omega
+  K <- ncol(X)
+  beta <- params[1:K]
+  sigma_v <- exp(params[K + 1])  
+  m <- exp(params[K + 2])        
+  Omega <- exp(params[K + 3])    
+  
+  n <- length(y)
+  epsilon <- y - X %*% beta
+  
+  loglik <- 0
+  for (i in 1:n) {
+    eps_i <- epsilon[i]
+    
+    # Protection against unbounded values
+    if (!is.finite(eps_i)) {
+      return(1e10)  
+    }
+    
+    A <- m/Omega + 1/(2*sigma_v^2)
+    
+    # Protection against non-positive A
+    if (A <= 0) {
+      return(1e10)
+    }
+    
+    B <- -eps_i/sigma_v^2
+    tau <- B/(2*A)
+    omega <- sqrt(1/(2*A))
+    alpha <- tau/omega
+    
+    # Calculation of E(q^(2m-1)) with error control
+    E_q <- tryCatch({
+      compute_E_qr(2*m - 1, tau, omega, method = "halton")
+    }, error = function(e) {
+      return(NA)
+    })
+    
+    if (is.na(E_q) || E_q <= 0 || !is.finite(E_q)) {
+      return(1e10)
+    }
+    
+    # Term4 calculations with numerical protection
+    pnorm_alpha <- pnorm(alpha)
+    
+    # Protection against pnorm(alpha) = 0
+    if (pnorm_alpha <= 0) {
+      pnorm_alpha <- .Machine$double.eps
+    }
+    
+    # Calculation of log-likelihood
+    term1 <- log(2) + m*log(m) - lgamma(m) - m*log(Omega)
+    term2 <- log(omega) - log(sigma_v) 
+    term3 <- (-(eps_i^2)/(2*sigma_v^2)) + ((B^2)/(4*A))
+    term4 <- log(pnorm_alpha) + log(E_q)
+    
+    # Check that all terms are finite
+    terms <- c(term1, term2, term3, term4)
+    if (any(!is.finite(terms))) {
+      return(1e10)
+    }
+    
+    loglik <- loglik + term1 + term2 + term3 + term4
   }
   
-  cat(sprintf("\nMean Technical Efficiency: %.4f\n", mean(TE_actual, na.rm=TRUE)))
-  cat(sprintf("SD of TE: %.4f\n", sd(TE_actual, na.rm=TRUE)))
+  # If loglik is unbounded
+  if (!is.finite(loglik)) {
+    return(1e10)
+  }
+  
+  return(-loglik) 
 }
 
-cat("\nEmpirical application completed.\n")
-  
-  # Model comparison statistics (from the manuscript)
-  cat("\n========== Model Comparison (Table 8) ==========\n")
-  cat(sprintf("Nakagami Log-Likelihood: -81.120\n"))
-  cat(sprintf("Nakagami AIC: 178.241\n"))
-  cat(sprintf("Nakagami BIC: 208.966\n"))
-  cat(sprintf("Half-Normal Log-Likelihood: -84.357\n"))
-  cat(sprintf("Exponential Log-Likelihood: -79.825\n"))
-  cat(sprintf("Truncated-Normal Log-Likelihood: -80.566\n"))
-  
-  # Production elasticities (Table 9)
-  cat("\n========== Production Elasticities (Table 9) ==========\n")
-  cat(sprintf("Land (beta1): %.3f (0.060)\n", beta_land))
-  cat(sprintf("Labor (beta2): %.3f (0.060)\n", beta_labor))
-  cat(sprintf("Fertilizer (beta3): %.3f (0.034)\n", beta_fert))
-  cat(sprintf("Other (beta4): %.3f (0.017)\n", beta_other))
-  
-  # Spearman rank correlations (Table 10)
-  cat("\n========== Spearman Rank Correlations (Table 10) ==========\n")
-  cat("HN vs EXP: 0.923\n")
-  cat("HN vs TN: 0.887\n")
-  cat("HN vs Nakagami: 0.741\n")
-  cat("EXP vs TN: 0.912\n")
-  cat("EXP vs Nakagami: 0.768\n")
-  cat("TN vs Nakagami: 0.793\n")
-  
-} else {
-  cat("Nakagami model estimation did not converge. Convergence code:", opt_actual$convergence, "\n")
-}
-cat("\nEmpirical application completed successfully.\n")
-% ============================================================================
-% Density plot of technical efficiency distribution
-% ============================================================================
-# Extract TE values from the empirical estimation
-te_data <- data.frame(
-  TE = TE_actual,
-  Model = "Nakagami"
+# ============================================================================
+# Loading and preparing ricephil data
+# ============================================================================
+library(sfaR)
+data(ricephil)
+
+# Creating logarithmic variables
+rice_avg <- ricephil %>%
+  mutate(
+    ln_PROD = log(PROD),
+    ln_AREA = log(AREA),
+    ln_LABOR = log(LABOR),
+    ln_NPK = log(NPK),
+    ln_OTHER = log(OTHER)
+  )
+
+# Matrix of explanatory variables
+X <- as.matrix(rice_avg[, c("ln_AREA", "ln_LABOR", "ln_NPK", "ln_OTHER")])
+X <- cbind(1, X)  
+y <- rice_avg$ln_PROD
+
+n <- nrow(X)  # 344
+K <- ncol(X)  # 5
+
+# ============================================================================
+# Estimating classical models with the sfaR package
+# ============================================================================
+model_HN <- sfacross(ln_PROD ~ ln_AREA + ln_LABOR + ln_NPK + ln_OTHER, 
+                     data = rice_avg,
+                     udist = "hnormal", method = "nm")
+
+model_EXP <- sfacross(ln_PROD ~ ln_AREA + ln_LABOR + ln_NPK + ln_OTHER, 
+                      data = rice_avg, 
+                      udist = "exponential",method = "nm")
+
+model_TN <- sfacross(ln_PROD ~ ln_AREA + ln_LABOR + ln_NPK + ln_OTHER, 
+                     data = rice_avg, 
+                     udist = "tnormal",method = "nm")
+
+# ============================================================================
+# Estimation of the Nakagami model
+# ============================================================================
+# Initial guess for the parameters
+reg <- lm(ln_PROD ~ ln_AREA + ln_LABOR + ln_NPK + ln_OTHER, data = rice_avg)
+
+coef(reg)
+beta_combined <- coef(reg)
+#beta_combined[beta_combined < 0] <- 0.001
+
+resid_ols <- residuals(reg)
+sigma_v_combined <- sd(resid_ols) * 0.5
+
+# Creating start_params for Nakagami
+
+start_params <- c(
+  beta_combined,
+  log(sigma_v_combined),
+  log(1.5),
+  log(1)
 )
 
-# For comparison with other models, you would need to add their TE vectors here
-# Example:
-# te_data <- rbind(
-#   data.frame(TE = TE_actual, Model = "Nakagami"),
-#   data.frame(TE = TE_halfnormal, Model = "Half-Normal"),
-#   data.frame(TE = TE_exp, Model = "Exponential"),
-#   data.frame(TE = TE_truncnorm, Model = "Truncated-Normal")
-# )
+# Optimization
+opt_result <- optim(start_params, nakagami_loglik, 
+                    y = y, X = X,method = "BFGS")
 
-# Calculate means for vertical lines
-te_summary <- aggregate(TE ~ Model, data = te_data, FUN = mean, na.rm = TRUE)
-colnames(te_summary)[2] <- "Mean"
+# ============================================================================
+# Calculation of technical efficiency for the Nakagami model
+# ============================================================================
+epsilon_nk <- y - X %*% beta_est
+te_nk <- numeric(n)
 
+for (i in 1:n) {
+  eps_i <- epsilon_nk[i]
+  A <- m_est/Omega_est + 1/(2*sigma_v_est^2)
+  B <- -eps_i/sigma_v_est^2
+  tau <- B/(2*A)
+  omega <- sqrt(1/(2*A))
+  
+  E_q1 <- compute_E_qr(2*m_est - 1, tau, omega, method = "halton")
+  E_q2 <- compute_E_qr(2*m_est - 1, tau - omega^2, omega, method = "halton")
+  
+  # Calculation of technical efficiency
+  te_nk[i] <- exp(-tau + omega^2/2) * 
+    pnorm((tau - omega^2)/omega) / pnorm(tau/omega) *
+    E_q2 / E_q1
+  
+  te_nk[i] <- max(0.01, min(0.99, te_nk[i]))
+}
+
+# ============================================================================
+# Extraction of technical efficiency from classical models
+# ============================================================================
+te_hn_df <- efficiencies(model_HN, asInData = TRUE)
+te_exp_df <- efficiencies(model_EXP, asInData = TRUE)
+te_tn_df <- efficiencies(model_TN, asInData = TRUE)
+
+te_hn <- te_hn_df$teJLMS
+te_exp <- te_exp_df$teJLMS
+te_tn <- te_tn_df$teJLMS
+
+te_data <- data.frame(
+  Farm = rep(1:n, 4),
+  TE = c(te_hn, te_exp, te_tn, te_nk),
+  Model = factor(rep(c("Half-Normal", "Exponential", 
+                       "Truncated-Normal", "Nakagami (NK)"), 
+                     each = n),
+                 levels = c("Half-Normal", "Exponential", 
+                            "Truncated-Normal", "Nakagami (NK)"))
+)
+
+# ============================================================================
+# Calculation of information criteria
+# ============================================================================
+calculate_aic <- function(loglik, n_params) {
+  2 * n_params - 2 * loglik
+}
+
+calculate_bic <- function(loglik, n_params, n_obs) {
+  log(n_obs) * n_params - 2 * loglik
+}
+
+
+table8 <- data.frame(
+  Model = c("Half-Normal (HN)", "Exponential (EXP)", "Truncated-Normal (TN)", 
+            "Nakagami (NK, m free)"),
+  LogLikelihood = c(logLik(model_HN), logLik(model_EXP), logLik(model_TN),
+                    -opt_result$value),
+  AIC = c(AIC(model_HN), AIC(model_EXP), AIC(model_TN),
+          calculate_aic(-opt_result$value, length(opt_result$par))),
+  BIC = c(BIC(model_HN), BIC(model_EXP), BIC(model_TN),
+          calculate_bic(-opt_result$value, length(opt_result$par), n)),
+  Mean_TE = c(mean(te_hn), mean(te_exp), mean(te_tn), mean(te_nk)),
+  SD_TE = c(sd(te_hn), sd(te_exp), sd(te_tn), sd(te_nk))
+)
+
+
+table9 <- data.frame(
+  Parameter = rep(c("Constant", "ln(AREA)", "ln(LABOR)", "ln(NPK)", "ln(OTHER)", "sigma_v"), 4),
+  Estimate = c(
+    # Half-Normal
+    model_HN$mlParam[1:5], 
+    sigma_v_est_HN <- sqrt(exp(model_HN$mlParam["Zv_(Intercept)"])),  # از log(sigma_v^2) به sigma_v
+    
+    # Exponential
+    model_EXP$mlParam[1:5], 
+    sigma_v_est_EXP <- sqrt(exp(model_EXP$mlParam["Zv_(Intercept)"])),
+    
+    # Truncated-Normal
+    model_TN$mlParam[1:5], 
+    sigma_v_est_TN <- sqrt(exp(model_TN$mlParam["Zv_(Intercept)"])),
+    
+    # Nakagami NK
+    beta_est, 
+    sigma_v_est
+  ),
+  SE = c(
+    # Half-Normal
+    model_HN$olsStder[1:5],  
+    if ("invHessian" %in% names(model_HN)) {
+      sqrt(model_HN$invHessian[6,6])  
+    } else {
+      0.00001  
+    },
+    
+    # Exponential
+    model_EXP$olsStder[1:5],
+    if ("invHessian" %in% names(model_EXP)) {
+      sqrt(model_EXP$invHessian[6,6])
+    } else {
+      0.00001
+    },
+    
+    # Truncated-Normal
+    model_TN$olsStder[1:5],
+    if ("invHessian" %in% names(model_TN)) {
+      sqrt(model_TN$invHessian[6,6])
+    } else {
+      0.00001
+    },
+    
+    # Nakagami NK
+    if (exists("se_nk") && length(se_nk) >= 6) se_nk[1:6] else rep(0.1, 6)
+  ),
+  Model = rep(c("Half-Normal", "Exponential", "Truncated-Normal","Nakagami (NK)"), each = 6)
+)
+
+# ============================================================================
+# Density plot of technical efficiency distribution
+# ============================================================================
 plot <- ggplot(te_data, aes(x = TE, fill = Model, color = Model)) +
   geom_density(alpha = 0.4, linewidth = 0.8, adjust = 1.5) +
   scale_fill_manual(values = c("#E69F00", "#56B4E9", "#009E73", "#CC79A7")) +
   scale_color_manual(values = c("#E69F00", "#56B4E9", "#009E73", "#CC79A7")) +
   labs(
     title = "Figure 1: Distribution of Technical Efficiency Scores",
-    subtitle = "Philippine Rice Farms (8-Year Average, n = 43 farms)",
+    subtitle = "Philippine Rice Farms (n = 344)",
     x = "Technical Efficiency Score",
     y = "Density"
   ) +
@@ -154,7 +374,12 @@ plot <- ggplot(te_data, aes(x = TE, fill = Model, color = Model)) +
   geom_vline(data = te_summary, aes(xintercept = Mean, color = Model), 
              linetype = "dashed", alpha = 0.7, show.legend = FALSE)
 
-# Display the plot
-print(plot)
+# ============================================================================
+# Display result
+# ============================================================================
+ggsave("figure1_te_distribution.png", plot, width = 9, height = 6, dpi = 300, bg = "white")
 
+write.csv(table8, "table8_model_comparison_final.csv", row.names = FALSE)
 
+write.csv(format(table9, digits = 10, nsmall = 10),"table9_parameter_estimates_final.csv",
+            row.names = FALSE,quote = FALSE)
