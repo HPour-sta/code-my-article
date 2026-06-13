@@ -21,12 +21,14 @@ code-my-article/
 ## Requirements
 
 - R >= 4.2.0
-- Packages: `maxLik`, `truncnorm`, `pracma`, `randtoolbox`, `ggplot2`
+- Packages: `maxLik`, `truncnorm`, `pracma`, `randtoolbox`, `ggplot2`,`frontier`, `sfaR`, `dplyr`, `tidyr`, 
+                      `reshape2`, `numDeriv`, `Rmpfr`, `psych`, `kableExtra`
 
 ## Installation
 
  ```r
- install.packages(c("maxLik", "truncnorm", "pracma", "randtoolbox", "ggplot2"))
+ install.packages(c("maxLik", "truncnorm", "pracma", "randtoolbox", "ggplot2","frontier", "sfaR", "dplyr", "tidyr", 
+                      "reshape2", "numDeriv", "Rmpfr", "psych", "kableExtra"))
  ```
  
  ## Run the Code
