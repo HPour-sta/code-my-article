@@ -134,14 +134,12 @@ if (!dir.exists("outputs")) dir.create("outputs")
 
 cat("\nRunning simulation for NK-Low (mu=0.6, sigma_u=0.5) with R = 1000...\n")
 results_low <- run_simulation_extreme(n = 200, R = 1000, 
-                                      true_mu = 0.6, true_sigma_u = 0.5, 
-                                      true_TE = 0.689)
+                                      true_mu = 0.6, true_sigma_u = 0.5)
 if (!is.null(results_low)) write.csv(results_low, "outputs/table5_low.csv", row.names = FALSE)
 
 cat("\nRunning simulation for NK-High (mu=5.0, sigma_u=1.0) with R = 1000...\n")
 results_high <- run_simulation_extreme(n = 200, R = 1000, 
-                                       true_mu = 5.0, true_sigma_u = 1.0, 
-                                       true_TE = 0.387)
+                                       true_mu = 5.0, true_sigma_u = 1.0)
 if (!is.null(results_high)) write.csv(results_high, "outputs/table5_high.csv", row.names = FALSE)
 
 cat("\nTable 5 simulation completed successfully.\n")
