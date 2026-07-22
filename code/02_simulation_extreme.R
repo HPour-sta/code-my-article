@@ -1,7 +1,7 @@
 % ============================================================================
 % FILE 4: code/02_simulation_extreme.R
 % ============================================================================
-# Monte Carlo simulation for Table 5 (Extreme Nakagami cases)
+# Monte Carlo simulation for Table 6 (Extreme Nakagami cases)
 # NK-Low: mu=0.6, sigma_u=0.5
 # NK-High: mu=5.0, sigma_u=1.0
 # R = 1000 as in manuscript
