@@ -1,7 +1,7 @@
 # ============================================================================
 # FILE 5: code/03_empirical_application.R 
 # ============================================================================
-# Empirical application: Philippine rice farms (Tables 8, 9 and Figure1)
+# Empirical application: Philippine rice farms (Tables 9, 10 and Figure1)
 # Data source: ricephil from sfaR package (used only as data source)
 # Data hard-coded from Battese and Coelli (1988)
 # ============================================================================
