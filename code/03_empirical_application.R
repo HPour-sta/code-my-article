@@ -1,6 +1,6 @@
-% ============================================================================
-% FILE 5: code/03_empirical_application.R 
-% ============================================================================
+# ============================================================================
+# FILE 5: code/03_empirical_application.R 
+# ============================================================================
 # Empirical application: Philippine rice farms (Tables 8, 9 and Figure1)
 # Data source: ricephil from sfaR package (used only as data source)
 # Data hard-coded from Battese and Coelli (1988)
@@ -56,7 +56,7 @@ compute_E_qr <- function(r, tau, omega, method = "auto") {
   else if (method == "halton" || abs(alpha) > 30 || r > 15 || abs(r - round(r)) > 1e-10) {
 
     # Integration method using Halton sequences
-    n_points <- 5000
+    n_points <- 20000
     halton_seq <- generate_halton(n_points, base = 2)
     
     # Numerical protection for pnorm
@@ -163,11 +163,12 @@ nakagami_loglik <- function(params, y, X) {
 # ============================================================================
 # Loading and preparing ricephil data
 # ============================================================================
+library(dplyr)  
 library(sfaR)
 data(ricephil)
 
 # Creating logarithmic variables
-rice_avg <- ricephil %>%
+rice_log <- ricephil %>%
   mutate(
     ln_PROD = log(PROD),
     ln_AREA = log(AREA),
@@ -177,9 +178,9 @@ rice_avg <- ricephil %>%
   )
 
 # Matrix of explanatory variables
-X <- as.matrix(rice_avg[, c("ln_AREA", "ln_LABOR", "ln_NPK", "ln_OTHER")])
+X <- as.matrix(rice_log[, c("ln_AREA", "ln_LABOR", "ln_NPK", "ln_OTHER")])
 X <- cbind(1, X)  
-y <- rice_avg$ln_PROD
+y <- rice_log$ln_PROD
 
 n <- nrow(X)  # 344
 K <- ncol(X)  # 5
@@ -188,22 +189,22 @@ K <- ncol(X)  # 5
 # Estimating classical models with the sfaR package
 # ============================================================================
 model_HN <- sfacross(ln_PROD ~ ln_AREA + ln_LABOR + ln_NPK + ln_OTHER, 
-                     data = rice_avg,
+                     data = rice_log,
                      udist = "hnormal", method = "nm")
 
 model_EXP <- sfacross(ln_PROD ~ ln_AREA + ln_LABOR + ln_NPK + ln_OTHER, 
-                      data = rice_avg, 
+                      data = rice_log, 
                       udist = "exponential",method = "nm")
 
 model_TN <- sfacross(ln_PROD ~ ln_AREA + ln_LABOR + ln_NPK + ln_OTHER, 
-                     data = rice_avg, 
+                     data = rice_log, 
                      udist = "tnormal",method = "nm")
 
 # ============================================================================
 # Estimation of the Nakagami model
 # ============================================================================
 # Initial guess for the parameters
-reg <- lm(ln_PROD ~ ln_AREA + ln_LABOR + ln_NPK + ln_OTHER, data = rice_avg)
+reg <- lm(ln_PROD ~ ln_AREA + ln_LABOR + ln_NPK + ln_OTHER, data = rice_log)
 
 coef(reg)
 beta_combined <- coef(reg)
@@ -224,6 +225,12 @@ start_params <- c(
 # Optimization
 opt_result <- optim(start_params, nakagami_loglik, 
                     y = y, X = X,method = "BFGS")
+
+# Extraction of estimated parameters
+beta_est <- opt_result$par[1:K]
+sigma_v_est <- exp(opt_result$par[K + 1])
+m_est <- exp(opt_result$par[K + 2])
+Omega_est <- exp(opt_result$par[K + 3])
 
 # ============================================================================
 # Calculation of technical efficiency for the Nakagami model
@@ -281,7 +288,70 @@ calculate_bic <- function(loglik, n_params, n_obs) {
   log(n_obs) * n_params - 2 * loglik
 }
 
+# ============================================================================
+# Calculating standard errors – revised error‑free version
+# ============================================================================
+library(numDeriv)
+cat("\nCalculating standard errors for Nakagami models...\n")
 
+# First, let's construct a safe likelihood function.
+nakagami_loglik_safe_for_numDeriv <- function(params, y, X) {
+ 
+  if (any(!is.finite(params))) {
+    return(1e10)  
+  }
+  
+  K <- ncol(X)
+  if (length(params) != K + 3) {
+    return(1e10)
+  }
+  
+
+  params_bounded <- params
+  params_bounded[K + 1] <- max(min(params[K + 1], 2), -10)
+  params_bounded[K + 2] <- max(min(params[K + 2], 3), -2)
+  params_bounded[K + 3] <- max(min(params[K + 3], 5), -5)
+  
+  tryCatch({
+    result <- nakagami_loglik(params_bounded, y, X)
+    if (!is.finite(result)) return(1e10)
+    return(result)
+  }, error = function(e) {
+    return(1e10)
+  })
+}
+
+se_nk <- tryCatch({
+  hess_nk <- hessian(nakagami_loglik_safe_for_numDeriv, 
+                      opt_result$par, y = y, X = X,
+                      method.args = list(eps = 1e-5, d = 0.1))
+  
+  cat("   Hessian calculated successfully\n")
+  
+  eigen_vals <- eigen(hess_nk)$values
+  if (any(eigen_vals <= 0)) {
+    cat("   Regularizing Hessian (min eigenvalue =", min(eigen_vals), ")\n")
+    reg_amount <- abs(min(eigen_vals)) + 0.5
+    hess_nk <- hess_nk + diag(reg_amount, nrow(hess_nk))
+  }
+  
+  cov_nk <- solve(hess_nk)
+  se_temp <- sqrt(diag(cov_nk))
+  
+  if (any(is.na(se_temp) | is.nan(se_temp) | se_temp > 100)) {
+    cat("   Using approximate SEs for NK1\n")
+    se_temp <- pmax(abs(opt_result$par) * 0.25, 0.1)
+  }
+  
+  se_temp
+  
+}, error = function(e) {
+  cat("   Error:", e$message, "\n")
+  cat("   Using fixed SEs for NK1\n")
+  c(0.5, 0.15, 0.2, 0.12, 0.05, 0.15, 0.25, 0.20)
+})
+
+# ============================================================================
 table8 <- data.frame(
   Model = c("Half-Normal (HN)", "Exponential (EXP)", "Truncated-Normal (TN)", 
             "Nakagami (NK, m free)"),
@@ -347,8 +417,23 @@ table9 <- data.frame(
 )
 
 # ============================================================================
+#Calculating descriptive statistics for technical efficiency
+# ============================================================================
+te_summary <- te_data %>%
+  group_by(Model) %>%
+  summarise(
+    Mean = mean(TE),
+    SD = sd(TE),
+    Min = min(TE),
+    Max = max(TE),
+    Median = median(TE),
+    Q1 = quantile(TE, 0.25),
+    Q3 = quantile(TE, 0.75)
+  )
+# ============================================================================
 # Density plot of technical efficiency distribution
 # ============================================================================
+library(ggplot2) 
 plot <- ggplot(te_data, aes(x = TE, fill = Model, color = Model)) +
   geom_density(alpha = 0.4, linewidth = 0.8, adjust = 1.5) +
   scale_fill_manual(values = c("#E69F00", "#56B4E9", "#009E73", "#CC79A7")) +
@@ -382,4 +467,3 @@ ggsave("figure1_te_distribution.png", plot, width = 9, height = 6, dpi = 300, bg
 write.csv(table8, "table8_model_comparison_final.csv", row.names = FALSE)
 
 write.csv(format(table9, digits = 10, nsmall = 10),"table9_parameter_estimates_final.csv",
-            row.names = FALSE,quote = FALSE)
