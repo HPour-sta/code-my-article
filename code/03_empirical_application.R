@@ -352,7 +352,7 @@ se_nk <- tryCatch({
 })
 
 # ============================================================================
-table8 <- data.frame(
+table9 <- data.frame(
   Model = c("Half-Normal (HN)", "Exponential (EXP)", "Truncated-Normal (TN)", 
             "Nakagami (NK, m free)"),
   LogLikelihood = c(logLik(model_HN), logLik(model_EXP), logLik(model_TN),
@@ -366,7 +366,7 @@ table8 <- data.frame(
 )
 
 
-table9 <- data.frame(
+table10 <- data.frame(
   Parameter = rep(c("Constant", "ln(AREA)", "ln(LABOR)", "ln(NPK)", "ln(OTHER)", "sigma_v"), 4),
   Estimate = c(
     # Half-Normal
@@ -464,6 +464,6 @@ plot <- ggplot(te_data, aes(x = TE, fill = Model, color = Model)) +
 # ============================================================================
 ggsave("figure1_te_distribution.png", plot, width = 9, height = 6, dpi = 300, bg = "white")
 
-write.csv(table8, "table8_model_comparison_final.csv", row.names = FALSE)
+write.csv(table8, "table9_model_comparison_final.csv", row.names = FALSE)
 
-write.csv(format(table9, digits = 10, nsmall = 10),"table9_parameter_estimates_final.csv",
+write.csv(format(table10, digits = 10, nsmall = 10),"table9_parameter_estimates_final.csv",
